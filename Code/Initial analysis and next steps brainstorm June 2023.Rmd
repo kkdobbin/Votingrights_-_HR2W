@@ -1,7 +1,7 @@
 ---
 title: 'Voting rights and the HR2W: Initial analysis and next steps brainstorm'
 author: "Kristin Dobbin"
-date: "2023-06-23"
+date: "2023-07-05"
 output:
   html_document: default
   pdf_document: default
@@ -75,12 +75,23 @@ CWSgov$board <- ifelse(CWSgov$Final_inst_update == "Investor Owned Utility" | CW
 
 CWSgov$board <- ifelse( CWSgov$Final_inst_update == "Joint Powers Authority/Agreement" | CWSgov$Final_inst_update == "Special Act District" | CWSgov$Final_inst_update == "County Sanitation District" | CWSgov$Final_inst_update == "Irrigation District", "Variable", CWSgov$board)
 
+CWSgov$boardselection <- ifelse(CWSgov$Final_inst_update == "Community Services District" |  CWSgov$Final_inst_update == "Municipal Water District" | CWSgov$Final_inst_update == "City" | CWSgov$Final_inst_update == "County Sanitation District"| CWSgov$Final_inst_update == "County Water District"| CWSgov$Final_inst_update == "Maintenance District"| CWSgov$Final_inst_update == "Municipal Utility District"| CWSgov$Final_inst_update == "Public Utility District"| CWSgov$Final_inst_update == "Resort Improvement District"| CWSgov$Final_inst_update == "Resource Conservation District"| CWSgov$Final_inst_update == "Sanitary District"| CWSgov$Final_inst_update == "Water Conservation District", "Board selected by residents", NA)
+
+CWSgov$boardselection <- ifelse(CWSgov$Final_inst_update == "Mutual Benefit","Board selected by limited residents", CWSgov$boardselection)
+
+CWSgov$boardselection <- ifelse(CWSgov$Final_inst_update == "Investor Owned Utility" | CWSgov$Final_inst_update == "County Service Area" | CWSgov$Final_inst_update == "County Waterworks District" | CWSgov$Final_inst_update == "Mobile Home Park" | CWSgov$Final_inst_update == "County" | CWSgov$Final_inst_update == "Federal" | CWSgov$Final_inst_update == "Private - Ancillary" | CWSgov$Final_inst_update == "School District" | CWSgov$Final_inst_update == "State", "Board not selected by residents", CWSgov$boardselection)
+
+CWSgov$boardselection <- ifelse(CWSgov$Final_inst_update == "Mobile Home Park" | CWSgov$Final_inst_update == "Federal" | CWSgov$Final_inst_update == "Private - Ancillary" | CWSgov$Final_inst_update == "School District" | CWSgov$Final_inst_update == "State", "No board", CWSgov$boardselection)
+
+CWSgov$boardselection <- ifelse(CWSgov$Final_inst_update == "California Water District" | CWSgov$Final_inst_update == "Irrigation District"| CWSgov$Final_inst_update == "Joint Powers Authority/Agreement" | CWSgov$Final_inst_update == "Special Act District" , "Variable", CWSgov$boardselection)
+
 #change to factors
 CWSgov$ancillary <- as.factor(CWSgov$ancillary)
 CWSgov$public <- as.factor(CWSgov$public)
 CWSgov$voting <- as.factor(CWSgov$voting)
 CWSgov$voting2 <- as.factor(CWSgov$voting2)
 CWSgov$voting3 <- as.factor(CWSgov$voting3)
+CWSgov$boardselection <- as.factor(CWSgov$boardselection)
 
 ## add in outcome data
 Arrearage <- read.csv(("Data/public-arrearage-program-data-2022-01-19.csv")) #data comes from SWRCB (https://www.waterboards.ca.gov/arrearage_payment_program/). This 1-19-22 version has remained the most updated on their website, I think applications were due December 2021 so that makes sense?
@@ -92,7 +103,7 @@ Arrearage$Application.complete. <- as.factor(Arrearage$Application.complete.)
 
 SAFER2023 <- read.csv("Data/Drinking_Water_Risk_Assessment.csv") #SAFER data comes from https://data.ca.gov/dataset/safer-failing-and-at-risk-drinking-water-systems. Dictionary saved in data folder
 SAFER2023 <- rename(SAFER2023, PWSID = WATER_SYSTEM_NUMBER)
-SAFER2023 <- SAFER2023 %>% select(PWSID, SERVICE_CONNECTIONS, POPULATION, MHI, CALENVIRO_SCREEN_SCORE, FINAL_SAFER_STATUS, PRIMARY_MCL_VIOLATION, SECONDARY_MCL_VIOLATION,E_COLI_VIOLATION, TREATMENT_TECHNIQUE_VIOLATION, MONITORING_AND_REPORTING_VIOLATION, WEIGHTED_WATER_QUALITY_SCORE, WEIGHTED_ACCESSIBILITY_SCORE, WEIGHTED_AFFORDABILITY_SCORE, WEIGHTED_TMF_CAPACITY_SCORE, FUNDING_RECEIVED_SINCE_2017, TOTAL_WEIGHTED_RISK_SCORE_BEFORE_DIVIDING_BY_CATEGORY_COUNT)
+SAFER2023 <- SAFER2023 %>% select(PWSID, SERVICE_CONNECTIONS, POPULATION, MHI, CALENVIRO_SCREEN_SCORE, FINAL_SAFER_STATUS, PRIMARY_MCL_VIOLATION, SECONDARY_MCL_VIOLATION,E_COLI_VIOLATION, TREATMENT_TECHNIQUE_VIOLATION, MONITORING_AND_REPORTING_VIOLATION, WEIGHTED_WATER_QUALITY_SCORE, WEIGHTED_ACCESSIBILITY_SCORE, WEIGHTED_AFFORDABILITY_SCORE, WEIGHTED_TMF_CAPACITY_SCORE, FUNDING_RECEIVED_SINCE_2017, TOTAL_WEIGHTED_RISK_SCORE_BEFORE_DIVIDING_BY_CATEGORY_COUNT, CURRENT_FAILING)
 SAFER2023$WEIGHTED_ACCESSIBILITY_SCORE <- as.numeric(SAFER2023$WEIGHTED_ACCESSIBILITY_SCORE)
 SAFER2023$WEIGHTED_TMF_CAPACITY_SCORE <- as.numeric(SAFER2023$WEIGHTED_TMF_CAPACITY_SCORE)
 SAFER2023$WEIGHTED_AFFORDABILITY_SCORE <- as.numeric(SAFER2023$WEIGHTED_AFFORDABILITY_SCORE)
@@ -103,6 +114,7 @@ SAFER2023$MHI <- as.numeric(SAFER2023$MHI)
 SAFER2023$CALENVIRO_SCREEN_SCORE <- as.numeric(SAFER2023$CALENVIRO_SCREEN_SCORE)
 SAFER2023$TOTAL_WEIGHTED_RISK_SCORE_BEFORE_DIVIDING_BY_CATEGORY_COUNT[SAFER2023$TOTAL_WEIGHTED_RISK_SCORE_BEFORE_DIVIDING_BY_CATEGORY_COUNT == "Not Assessed"] <- NA
 SAFER2023$TOTAL_WEIGHTED_RISK_SCORE_BEFORE_DIVIDING_BY_CATEGORY_COUNT <- as.numeric(SAFER2023$TOTAL_WEIGHTED_RISK_SCORE_BEFORE_DIVIDING_BY_CATEGORY_COUNT)
+SAFER2023$CURRENT_FAILING <- as.factor(SAFER2023$CURRENT_FAILING)
 
 ## join all together and final type corrections
 Data <- left_join(CWSgov, SAFER2023)
@@ -115,96 +127,85 @@ Data <- rename(Data, Total_risk = TOTAL_WEIGHTED_RISK_SCORE_BEFORE_DIVIDING_BY_C
 
 California has `r nrow(CWSgov)` Community Water Systems (CWS) (excluding CWS on Tribal lands regulated directly by EPA region 9). These systems operate under a wide diversity of governance arrangements. Governance type, in turn, corresponds with a variety of important institutional considerations including how decisions are made, the structure (and even existence) of the governing board, and how the governing board is selected and by who. This analysis explores how particularly the later consideration may be associated with performance of these systems as it pertains to California's Human Right to Water Law (AB 685). 
 
-### Construction of independent variables of interest 
+### Construction of independent variable of interest 
 
-The proposed independent variable  of itnerest to test this question is an ordered factor with four possible options: 1) no governing board; 2) governing board not selected by residents served; 3) board selected by a limited group of residents served (e.g. landowners); and 4) board selected by all registered voters served. The category assigned to each of the 28 institutional types identified in the 2023 institutional update is displayed below.   
-
-at these two independent variables of interest for all 28 institutional types identified in the 2023 update, with two versions of the voting enfranchisement variable displayed for consideration. The first voting variable ("voting"), excludes from consideration ("NA") institutional types without governing boards (generally ancillary systems that exist for a primary purpose other than water provision). For example, state and federal systems that are recreation and carceral facilities and private ancillary systems that are private businesses including farms, packing houses, industrial parks etc.  The remainder of types are classified as either having no resident voting for the governing board, limited resident voting (ie limited to landowners) or full resident voting (ie all registered voters in district can vote). Alternatively, the second version of the voting variable ("Voting3") includes ancillary systems without governing boards in the category of "none" for the purposes of characterizing resident enfranchisement (in other words, groups together systems without a board with those where there is a board but it is not elected). Either one of these two variables could be used in the analysis or a different approach altogether could be used (e.g. two variables, one for existence of the board and one for voter enfranchisement where there is a board).  
-
-Finally, the "board" variable indicates the extent to which registered voter residents of the district are eligible to serve on the board themselves. Full means any registered voter can serve. Limited means only landowners can serve and none means there is either no board or the board is not comprised of local residents (so more similar to the voting3 variable). The big issue with this variable is that the public/governmental districts are limited to registered voters which necessitates citizenship which is not true of private types, most notable Mutual Benefit systems. It is hard to capture both of these considerations in one variable. 
-
-In each of the three variables, Tribal government institutional types and the unknown private system types are excluded from consideration. The later due to lack of information and the former as outliers due to their unique political structures as sovereign nations. Institutional types where voting enfranchisement or board eligibility is variable per California Code are currently listed as "variable". My plan is to code these 90-100 systems individually. 
+The proposed independent variable  of interest to test this question is an ordered factor with four possible options: 1) no governing board; 2) governing board not selected by residents served; 3) board selected by a limited group of residents served (e.g. landowners); and 4) board selected by all registered voters served. The category assigned to each of the 28 institutional types identified in the 2023 institutional update is displayed below. An assignment of "variable" indicates where board selection is variable per California Code. Each of these systems (roughly 90) will be hand coded for the final analysis. Finally, Tribal government institutional types and the unknown private system types are labeled as NA and excluded from consideration in all analyses. The later due to lack of information and the former as outliers due to their unique political structures as sovereign nations.
 
 ```{r tabular overview of draft IVs, include=TRUE, echo=FALSE}
-Table1 <- CWSgov %>% select(Final_inst_update, voting, voting3, board) %>% distinct()
-knitr::kable(Table1, col.names = c("2023 Institution types", "Voting", "Voting3", "Board"))
+Table1 <- CWSgov %>% select(Final_inst_update, boardselection) %>% distinct()
+knitr::kable(Table1, col.names = c("2023 Institution types", "Board selection"))
 
 ```
 
-#### Questions for feedback: What do you think about these three variables? How could they be improved? Which is most compelling/informative in terms of an anlysis of system performance? Do you disagree wtih any of the characterizations or see any mistakes?
+#### Questions for feedback: What do you think about this variable and its construction? Is it an accurate and meaningful portrayal of board selection? What changes would you suggest? Would it be better to look at eligibility to serve on the board? 
 
-### Potential system performance/outcome variables
+### Proposed outcome variables
 
-System performance, which can be measured in a variety of ways, is similarly diverse. California's CWSs vary with respect to their SAFER Needs Assessment status which reflects different levels of risk across water quality, water accessibility, water affordability and Technical Managerial and Financial Capacity. 
+System performance can be measured in a variety of ways and there is reason to believe that certain elements of performance may be more influenced by accountability and representation that others. For this reason I propose to use three distinct measures of performance: 1) whether a water system is on California's failing systems list (binary variable, Y/N); 2) System Needs Assessment risk score (numeric variable, can be disagregated to look at the needs assessment components individually e.g. water quality or affordability); 3) whether the water system applied for COVID-19 arrearage relief on behalf of their customers. These outcome measures are summarized below. 
 
-```{r tabular overview of DVs, include=TRUE, echo=FALSE}
-Table2 <- as.data.frame(summary(Data$FINAL_SAFER_STATUS))
-Table2$Percent <- (Table2$`summary(Data$FINAL_SAFER_STATUS)`)/(sum(Table2$`summary(Data$FINAL_SAFER_STATUS)`))
+
+```{r tabular overview of DVs, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+Table2 <- as.data.frame(summary(Data$CURRENT_FAILING))
+Table2$Percent <- (Table2$`summary(Data$CURRENT_FAILING)`)/(sum(Table2$`summary(Data$CURRENT_FAILING)`))
 Table2$Percent <- round(x = Table2$Percent, digits = 2)
 knitr::kable(Table2, col.names = c("Count", "Percent of all systems"))
 
-knitr::kable(summarize(Data,
-           Mean_total_risk = mean(na.omit(Total_risk)),
-           Mean_quality_risk = mean(na.omit(WEIGHTED_WATER_QUALITY_SCORE)),
-           Mean_accessibility_risk = mean(na.omit(WEIGHTED_ACCESSIBILITY_SCORE)),
-           Mean_affordability_risk = mean(na.omit(WEIGHTED_AFFORDABILITY_SCORE)),
-           Mean_TMF_risk = mean(na.omit(WEIGHTED_TMF_CAPACITY_SCORE))))
+library(vtable)
+Riskscore_and_components <- Data %>% select(Total_risk, WEIGHTED_WATER_QUALITY_SCORE, WEIGHTED_ACCESSIBILITY_SCORE, WEIGHTED_AFFORDABILITY_SCORE, WEIGHTED_TMF_CAPACITY_SCORE)
+st(Riskscore_and_components, out = "kable", title = "Summary statistics for risk score and components")
 
+Arrearage <- Data %>% select(Application.complete.)
+st(Arrearage, out = "kable", title = "Summary of arrearage applications")
 ```
 
-Notably, system risk or failing status reflects a complicated combination of factors and causes, not all of which are necessarily within the control of the governing board. Even assuming that voting and board representation matters, it is entirely feasible that a water system with robust representation and community participation is governance might still struggle if it is very small, has poor source water quality, has dilapidated infrastructure etc. Some additional potential outcomes for variation that may more clearly reflect the role of governance in system performance include funding received (likely still reflects risk some but also potentially reflects proactive efforts to fix issues?). `r sum(na.omit(Data$FUNDING_RECEIVED_SINCE_2017>0))` of CWSs have received state funding since 2017. Another potential option is whether a system applied for COVID-19 arrearage relief. We have data both on whether a system reported to the SWRCB that they intended to apply for the funding and if they did.  
 
-```{r more tabular overview of DVs, include=TRUE, echo=FALSE}
-Table3 <- as.data.frame(summary(Data$Intend.to.apply.))
-Table3$Percent <- (Table3$`summary(Data$Intend.to.apply.)`)/(sum(Table3$`summary(Data$Intend.to.apply.)`))
-Table3$Percent <- round(x = Table3$Percent, digits = 2)
-knitr::kable(Table3, col.names = c("Reported intending to apply", "Percent of all systems"))
+#### Questions for feedback: Are there other outcome or performance variables that would be interesting to  look at (e.g. total funding received in recent years)? How can we ensure a "well rounded" assessment of water system performance as it relates to the human right to water and best hone in on the influence of governance?  
 
-Table4 <- as.data.frame(summary(Data$Application.complete.))
-Table4$Percent <- (Table4$`summary(Data$Application.complete.)`)/(sum(Table4$`summary(Data$Application.complete.)`))
-Table4$Percent <- round(x = Table4$Percent, digits = 2)
-knitr::kable(Table4, col.names = c("Applied", "Percent of all systems"))
+### Proposed controls/covariates
+
+To keep things simple, I'm thinking of using thee controls/covariates in the analyses: 1) population served (log transformed); 2) water source (groundwater or surface water); and 3) whether water is purchased or self-produced. 
+
+#### Questions for feedback: Are there other controls that should be considered? How do we think about the role of geography? Is it necessary to include the purchased water variable?   
+
+```{r add in controls, include=FALSE, echo=FALSE}
+#population from safer
+#water source and whether purchased from CA SDWIS download July 5
+SDWIS <- read.csv("Data/CA_SDWIS_alldownload_July52023.csv")
+SDWIS <- rename(SDWIS, PWSID = Water.System.No.)
+SDWIS$PWSID <- as.factor(SDWIS$PWSID)
+SDWIS$Type <- as.factor(SDWIS$Type)
+SDWIS$Primary.Source.Water.Type <- as.factor(SDWIS$Primary.Source.Water.Type)
+SDWIS <- SDWIS %>% select(PWSID, Type, Primary.Source.Water.Type)
+SDWIS$Source <- as.factor(ifelse(SDWIS$Primary.Source.Water.Type == "GU" | SDWIS$Primary.Source.Water.Type == "GUP" | SDWIS$Primary.Source.Water.Type == "GW" | SDWIS$Primary.Source.Water.Type == "GWP", "GW", "SW"))
+SDWIS$Purchased <- as.factor(ifelse(SDWIS$Primary.Source.Water.Type == "GUP" | SDWIS$Primary.Source.Water.Type == "SWP" | SDWIS$Primary.Source.Water.Type == "GWP", "Purchased", "Self-produced"))
+
+Data <- left_join(Data, SDWIS)
+Data$LN_POP <- log((Data$POPULATION+1)) #added one to population first to avoide issue of loging 0. Need to figure out if this is the best way....
 ```
-
-#### Questions for feedback: Are there other outcome or performance variables that would be interesting to  look at? How can we ensure a "well rounded" assessment of water system performance as it relates to the human right to water and best hone in on the influence of governance?  
-
 
 ### Exploratory results
 
-Once the independent variables and outcomes of interest have been solidified, I will run some formal analyses using more appropriate statistical techniques but I include the following "rough" linear regressions to help illustrate what this analysis could look like (note covariates/controls currently not included, I plan to use at least service connections (or population) and source water, could include county).
+I include the following "rough" regressions to help illustrate what this analysis could look like, results will change as the variables and data are finalized. 
 
 ```{r analyses, include=TRUE, echo=FALSE}
-Vote1 <- lm(Total_risk ~ voting3, Data)
-summary(Vote1)
-
 library(sjPlot)
-Plot1 <- plot_model(Vote1, type = "pred", terms = "voting3", axis.title = c("Resident enfranchisement", "Predicted risk score"), title = " ") + theme_sjplot(base_size = 18); Plot1
 
-Vote2 <- glm(Application.complete. ~ voting3, data = Data, family= binomial)
-summary(Vote2)
+Data$CURRENT_FAILING <- relevel(Data$CURRENT_FAILING, ref = "Not Failing")
+Data$boardselection <- relevel(Data$boardselection, ref = "No board")
+Failing <- glm(CURRENT_FAILING ~ boardselection + LN_POP + Source, data = Data, family= binomial)
+summary(Failing)
 
-Plot2 <- plot_model(Vote2, type = "pred", terms = "voting3", axis.title = c("Resident enfranchisement", "Applied for arrearage $"), title = " ") + theme_sjplot(base_size = 18); Plot2
+Plot1 <- plot_model(Failing, type = "pred", terms = "boardselection", axis.title = c("Board selection", "Failing system status"), title = " ") + theme_sjplot(base_size = 10); Plot1
 
-Board1 <- lm(Total_risk ~ board, Data)
-summary(Board1)
+Risk <- lm(Total_risk ~ boardselection + LN_POP + Source, Data)
+summary(Risk)
 
-Plot3 <- plot_model(Board1, type = "pred", terms = "board", axis.title = c("Board eligibility", "Predicted risk score"), title = " ") + theme_sjplot(base_size = 18); Plot3
+Plot2 <- plot_model(Risk, type = "pred", terms = "boardselection", axis.title = c("Board selection", "Predicted total risk score"), title = " ") + theme_sjplot(base_size = 10); Plot2
 
-Board2 <- glm(FundingYorN ~ board, data = Data, family= binomial)
-summary(Board2)
+Data$Application.complete. <- relevel(Data$Application.complete., ref = "No")
+COVID <- glm(Application.complete. ~ voting3 + LN_POP + Source, data = Data, family= binomial)
+summary(COVID)
 
-Plot4 <- plot_model(Board2, type = "pred", terms = "board", axis.title = c("Board eligibility", "Applied for state $ since 2017"), title = " ") + theme_sjplot(base_size = 18); Plot4
+Plot3 <- plot_model(COVID, type = "pred", terms = "voting3", axis.title = c("Board selection", "Applied for covid arrearage relief"), title = " ") + theme_sjplot(base_size = 10); Plot3
+
 ```
-
-
-```{r tabular overview of covariates, include=FALSE, echo=FALSE, eval=FALSE}
-
-knitr::kable(summarize(Data,
-           Count = n(),
-           Mean_population = mean(na.omit(POPULATION)),
-           Mean_serviceconnections= mean(na.omit(SERVICE_CONNECTIONS)),
-           Mean_MHI = mean(na.omit(MHI)),
-           Mean_Calenviroscreen = mean(na.omit(CALENVIRO_SCREEN_SCORE))))
-```
-
-
