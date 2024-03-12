@@ -38,7 +38,7 @@ CWSgov$enfranchisement <- ifelse(CWSgov$Final_inst_update == "Mutual Benefit" ,"
 
 CWSgov$enfranchisement <- ifelse(CWSgov$Final_inst_update == "California Water District" | CWSgov$Final_inst_update == "Joint Powers Authority/Agreement" | CWSgov$Final_inst_update == "Special Act District" | CWSgov$Final_inst_update == "Irrigation District", "Variable", CWSgov$enfranchisement)
 
-CWSgov$enfranchisement <- ifelse(CWSgov$Final_inst_update == "Community Services District" | CWSgov$Final_inst_update == "County Service Area" | CWSgov$Final_inst_update == "Municipal Water District" | CWSgov$Final_inst_update == "City" | CWSgov$Final_inst_update == "County Sanitation District"| CWSgov$Final_inst_update == "County Water District"| CWSgov$Final_inst_update == "County Waterworks District" | CWSgov$Final_inst_update == "Irrigation District"| CWSgov$Final_inst_update == "Maintenance District"| CWSgov$Final_inst_update == "Municipal Utility District"| CWSgov$Final_inst_update == "Public Utility District"| CWSgov$Final_inst_update == "Resort Improvement District"| CWSgov$Final_inst_update == "Resource Conservation District"| CWSgov$Final_inst_update == "Sanitary District"| CWSgov$Final_inst_update == "Water Conservation District", "Full", CWSgov$enfranchisement)
+CWSgov$enfranchisement <- ifelse(CWSgov$Final_inst_update == "Community Services District" | CWSgov$Final_inst_update == "County Service Area" | CWSgov$Final_inst_update == "Municipal Water District" | CWSgov$Final_inst_update == "City" | CWSgov$Final_inst_update == "County Sanitation District"| CWSgov$Final_inst_update == "County Water District"| CWSgov$Final_inst_update == "County Waterworks District" | CWSgov$Final_inst_update == "Maintenance District"| CWSgov$Final_inst_update == "Municipal Utility District"| CWSgov$Final_inst_update == "Public Utility District"| CWSgov$Final_inst_update == "Resort Improvement District"| CWSgov$Final_inst_update == "Resource Conservation District"| CWSgov$Final_inst_update == "Sanitary District"| CWSgov$Final_inst_update == "Water Conservation District", "Full", CWSgov$enfranchisement)
 
 CWSgov$enfranchisement <- as.factor(CWSgov$enfranchisement)
 
@@ -53,8 +53,6 @@ CWSgov$enfranchisement <- as.character(CWSgov$enfranchisement)
 CWSgov$Variablecoded <- as.character(CWSgov$Variablecoded)
 CWSgov <- CWSgov %>% mutate(enfranchisement_final = case_when(enfranchisement == "Variable" ~ Variablecoded, .default = enfranchisement))
 CWSgov$enfranchisement_final <- as.factor(CWSgov$enfranchisement_final)
-CWSgov <- CWSgov %>% filter(enfranchisement_final != "Appointed by member agencies") %>% filter(enfranchisement_final != "Unknown") # remove cases where enfranchisement is unknown and cases where board members are appointed by member agencies. Could change this later
-CWSgov$enfranchisement_final <- droplevels(CWSgov$enfranchisement_final)
 
 #NOTES: leaving dependent districts (e.g. CSAs) as full enfranchisement for now since they are popularly elected but this is a big thing to consider/discuss further
 
@@ -73,7 +71,7 @@ Arrearage$Application.complete. <- as.factor(Arrearage$Application.complete.)
 ## SAFER
 SAFER2023 <- read.csv(here::here("Data_raw/Drinking_Water_Risk_Assessment.csv"))#SAFER data comes from https://data.ca.gov/dataset/safer-failing-and-at-risk-drinking-water-systems. Dictionary saved in data folder
 SAFER2023 <- rename(SAFER2023, PWSID = WATER_SYSTEM_NUMBER)
-SAFER2023 <- SAFER2023 %>% select(PWSID, SERVICE_CONNECTIONS, POPULATION, MHI, CALENVIRO_SCREEN_SCORE, FINAL_SAFER_STATUS, PRIMARY_MCL_VIOLATION, SECONDARY_MCL_VIOLATION,E_COLI_VIOLATION, TREATMENT_TECHNIQUE_VIOLATION, MONITORING_AND_REPORTING_VIOLATION, WEIGHTED_WATER_QUALITY_SCORE, WEIGHTED_ACCESSIBILITY_SCORE, WEIGHTED_AFFORDABILITY_SCORE, WEIGHTED_TMF_CAPACITY_SCORE, FUNDING_RECEIVED_SINCE_2017, TOTAL_WEIGHTED_RISK_SCORE_BEFORE_DIVIDING_BY_CATEGORY_COUNT, CURRENT_FAILING)
+SAFER2023 <- SAFER2023 %>% select(PWSID, SERVICE_CONNECTIONS, POPULATION, MHI, CALENVIRO_SCREEN_SCORE, FINAL_SAFER_STATUS, PRIMARY_MCL_VIOLATION, SECONDARY_MCL_VIOLATION,E_COLI_VIOLATION, TREATMENT_TECHNIQUE_VIOLATION, MONITORING_AND_REPORTING_VIOLATION, WEIGHTED_WATER_QUALITY_SCORE, WEIGHTED_ACCESSIBILITY_SCORE, WEIGHTED_AFFORDABILITY_SCORE, WEIGHTED_TMF_CAPACITY_SCORE, FUNDING_RECEIVED_SINCE_2017, TOTAL_WEIGHTED_RISK_SCORE_BEFORE_DIVIDING_BY_CATEGORY_COUNT, CURRENT_FAILING, PERCENT_OF_MEDIAN_HOUSEHOLD_INCOME_MHI_RAW_SCORE, EXTREME_WATER_BILL_RAW_SCORE, HOUSEHOLD_SOCIOECONOMIC_BURDEN_RAW_SCORE)
 SAFER2023$WEIGHTED_ACCESSIBILITY_SCORE <- as.numeric(SAFER2023$WEIGHTED_ACCESSIBILITY_SCORE)
 SAFER2023$WEIGHTED_TMF_CAPACITY_SCORE <- as.numeric(SAFER2023$WEIGHTED_TMF_CAPACITY_SCORE)
 SAFER2023$WEIGHTED_AFFORDABILITY_SCORE <- as.numeric(SAFER2023$WEIGHTED_AFFORDABILITY_SCORE)
@@ -85,6 +83,9 @@ SAFER2023$CALENVIRO_SCREEN_SCORE <- as.numeric(SAFER2023$CALENVIRO_SCREEN_SCORE)
 SAFER2023$TOTAL_WEIGHTED_RISK_SCORE_BEFORE_DIVIDING_BY_CATEGORY_COUNT[SAFER2023$TOTAL_WEIGHTED_RISK_SCORE_BEFORE_DIVIDING_BY_CATEGORY_COUNT == "Not Assessed"] <- NA
 SAFER2023$TOTAL_WEIGHTED_RISK_SCORE_BEFORE_DIVIDING_BY_CATEGORY_COUNT <- as.numeric(SAFER2023$TOTAL_WEIGHTED_RISK_SCORE_BEFORE_DIVIDING_BY_CATEGORY_COUNT)
 SAFER2023$CURRENT_FAILING <- as.factor(SAFER2023$CURRENT_FAILING)
+SAFER2023$PERCENT_OF_MEDIAN_HOUSEHOLD_INCOME_MHI_RAW_SCORE <- as.numeric(SAFER2023$PERCENT_OF_MEDIAN_HOUSEHOLD_INCOME_MHI_RAW_SCORE) #CHECK THIS 
+SAFER2023$EXTREME_WATER_BILL_RAW_SCORE <- as.numeric(SAFER2023$EXTREME_WATER_BILL_RAW_SCORE) #CHECK THIS
+SAFER2023$HOUSEHOLD_SOCIOECONOMIC_BURDEN_RAW_SCORE <- as.numeric(SAFER2023$HOUSEHOLD_SOCIOECONOMIC_BURDEN_RAW_SCORE)
 
 ## join all together and final type corrections
 Data <- left_join(CWSgov, SAFER2023)
@@ -109,4 +110,3 @@ Data$LN_POP <- log((Data$POPULATION+1)) #added one to population first to avoid 
 
 
 write.csv(Data, file = here::here("Data_processed/Compiled_data.csv"))
-

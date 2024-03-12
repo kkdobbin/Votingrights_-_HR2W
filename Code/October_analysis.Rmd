@@ -1,0 +1,156 @@
+---
+title: "October draft results"
+author: "Kristin Dobbin"
+date: "2023-10-09"
+output:
+  html_document: default
+  pdf_document: default
+knit: (function(rmdfile, ...) { rmarkdown::render(rmdfile, output_dir=here::here("Docs"))})
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+#markdown settings
+knitr::opts_knit$set(root.dir = "/Users/KristinDobbin/Box Sync/Projects/R_Projects/Votingrights_-_HR2W", warning=FALSE, message=FALSE, include=FALSE)
+
+#load libraries
+library(tidyverse)
+library(vtable)
+library(sjPlot)
+```
+
+```{r data, include=FALSE, echo=FALSE}
+
+###Load data
+Data <- read.csv(here::here("Data_processed/Compiled_data.csv"))
+Data <- Data[,-1]
+CWSgov <- read.csv(here::here("Data_raw/ACTIVE VERSION_ CWS institution types Sept 28 2023.csv"), header=T, na.strings=c("","NA")) #just for comparison of full body of systems in state
+CWSgov$Primacy_FINAL <- as.factor(CWSgov$Primacy_FINAL)
+Data$enfranchisement_final <- as.factor(Data$enfranchisement_final)
+Data$Final_inst_update <- as.factor(Data$Final_inst_update)
+```
+
+### Background, research questions and hypotheses
+
+California has `r nrow(CWSgov)` Community Water Systems (CWS) (including CWS on Tribal lands regulated directly by EPA Region 9). These systems operate under a wide diversity of governance arrangements as detailed by Dobbin & Fencl (2021). Governance type, in turn, corresponds with a variety of important institutional considerations including how decisions are made, the structure (and even existence) of the governing board, and how the governing board is selected and by who.
+
+Recent years have seen a growth of scholarship related to the fundamental importance of good water governance, but, in part due to a lack of data, little research has considered these questions at the water system scale. Nonetheless, high-profile cases like the poisoning of thousands in Flint Michigan highlight the ongoing importance of transparent, representative, and accountable local leadership for water justice.
+
+To begin addressing this gap, this paper aims to describe and quantify diversity in arrangements for representing customers in the decision-making of Community Water Systems (hereafter "enfranchisement") and explore any potential associations with system performance (see discussion of performance measure below). Specifically, we ask: 1) How are drinking water customers represented in decision-making in non-ancillary Community Water Systems in California?; and 2) Is customer enfranchisement associated with system performance? 
+
+Regarding the second question, we expect that greater customer enfranchisement will be associated improved performance and that this association will be strongest for performance measures that relate to affordability and access to public funding. 
+
+### Data Summary
+
+Our initial sample is `r nrow(Data)` of the total `r nrow(CWSgov)` Community Water Systems (CWS) in California. This sample excludes the `r sum(CWSgov$Primacy_FINAL == "EPA Region 9")` CWS on Tribal lands regulated directly by EPA region 9 as well as ancillary water systems serving state, federal or county facilities (e.g. prisons, county owned housing), schools and privately owned ancillary facilities (retreat centers, churches, packing houses, farmworker housing etc.). We exclude the former due to their unique governance and regulatory nature. We exclude the later due to the fact that such ancillary systems are not governed by boards (these rationale's need improvement, technically MHPs aren't governed by boards either generally). 
+
+#### Focal Independent variable: enfranchisment
+
+We use an independent variable called "enfranchisement" to test our hypotheses. This variable is factor variable with three levels: None, limited and full. None indicates that customers within the water system do not elect decision-makers for the system. This category is comprised entirely of privately owned water systems, both Mobile Home Parks and Investor Owned Utilities. The limited category indicates that only a subset of land-owning residents within the service area are able to votre to elect decision-makers. This category includes both private and public systems including Mutual Benefit systems (MWCs, Homeowners associations), some California Water Districts and some Irrigation Districts. Finally the category full indicates that all registered voters in the system/district are able to vote to elect decision makers (thus non-citizen are still excluded, this category includes county board of supervisors run systems (county subsidiary districts) where residents only directly elect one member of the board but other members are still elected). Notably, in `r sum(Data$enfranchisement_final == "Unknown")` cases, we were unable to classify systems into one of these three categories based on available information. In another `r sum(Data$enfranchisement_final == "Appointed by member agencies")` cases, mostly JPAs, board members are appointed by member agencies rather than by residents but these members themselves are often generally elected. We exclude these [32] cases from our analyses. Thus the final sample size and distribution is as follows: 
+
+```{r remove unknowns and appointed by member agencies and table, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+Data <- Data %>% filter(enfranchisement_final != "Appointed by member agencies") %>% filter(enfranchisement_final != "Unknown") # remove cases where enfranchisement is unknown and cases where board members are appointed by member agencies. Could change this later
+Data$enfranchisement_final <- droplevels(Data$enfranchisement_final)
+
+Enfranchisement <- Data %>% select(enfranchisement_final)
+st(Enfranchisement, out = "kable", title = "Summary of enfranchisement independent variable")
+
+```
+  
+  
+##### Questions for feedback: 
+  
+    
+    
+#### Outcome variables
+
+System performance can be measured in a variety of ways and there is reason to believe that certain elements of performance may be more influenced by accountability and representation that others. For this reason I propose to use three distinct measures of performance: 1) whether a water system is on California's failing systems list (binary variable, Y/N); 2) System Needs Assessment risk score (numeric variable, can be disagregated to look at the needs assessment components individually e.g. water quality or affordability); 3) whether the water system applied for COVID-19 arrearage relief on behalf of their customers. These outcome measures are summarized below. 
+
+
+```{r tabular overview of DVs, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+Data$CURRENT_FAILING <- as.factor(Data$CURRENT_FAILING)
+Failing <- as.data.frame(summary(Data$CURRENT_FAILING))
+Failing$Percent <- (Failing$`summary(Data$CURRENT_FAILING)`)/(sum(Failing$`summary(Data$CURRENT_FAILING)`))
+Failing$Percent <- round(x = Failing$Percent, digits = 2)
+knitr::kable(Failing, col.names = c("Count", "Percent of all systems"), label = "Presence on failing list")
+
+library(vtable)
+Riskscore_and_components <- Data %>% select(Total_risk, WEIGHTED_WATER_QUALITY_SCORE, WEIGHTED_ACCESSIBILITY_SCORE, WEIGHTED_AFFORDABILITY_SCORE, WEIGHTED_TMF_CAPACITY_SCORE)
+st(Riskscore_and_components, out = "kable", title = "Summary statistics for risk score and components")
+
+Arrearage <- Data %>% select(Application.complete.)
+st(Arrearage, out = "kable", title = "Summary of arrearage applications")
+```
+
+
+##### Questions for feedback: 
+  
+  
+#### Controls/covariates
+
+To keep things simple, I'm thinking of using three controls/covariates in the analyses: 1) population served (log transformed); 2) water source (groundwater or surface water); and 3) whether water is purchased or self-produced. 
+
+```{r add in controls, include=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+#population from safer
+#water source and whether purchased from CA SDWIS download July 5
+SDWIS <- read.csv(here::here("Data_raw/CA_SDWIS_alldownload_July52023.csv"))
+SDWIS <- rename(SDWIS, PWSID = Water.System.No.)
+SDWIS$PWSID <- as.factor(SDWIS$PWSID)
+SDWIS$Type <- as.factor(SDWIS$Type)
+SDWIS$Primary.Source.Water.Type <- as.factor(SDWIS$Primary.Source.Water.Type)
+SDWIS <- SDWIS %>% select(PWSID, Type, Primary.Source.Water.Type)
+SDWIS$Source <- as.factor(ifelse(SDWIS$Primary.Source.Water.Type == "GU" | SDWIS$Primary.Source.Water.Type == "GUP" | SDWIS$Primary.Source.Water.Type == "GW" | SDWIS$Primary.Source.Water.Type == "GWP", "GW", "SW"))
+SDWIS$Purchased <- as.factor(ifelse(SDWIS$Primary.Source.Water.Type == "GUP" | SDWIS$Primary.Source.Water.Type == "SWP" | SDWIS$Primary.Source.Water.Type == "GWP", "Purchased", "Self-produced"))
+
+Data <- left_join(Data, SDWIS)
+Data$LN_POP <- log((Data$POPULATION+1)) #added one to population first to avoid issue of loging 0. Need to figure out if this is the best way....
+
+Data$Source <- as.factor(Data$Source)
+Data$Application.complete. <- as.factor(Data$Application.complete.)
+Data$public <- as.factor(Data$public)
+```
+  
+  
+##### Questions for feedback: 
+
+### Analysis
+  
+```{r analyses, include=TRUE, echo=FALSE}
+
+Data$CURRENT_FAILING <- relevel(Data$CURRENT_FAILING, ref = "Not Failing")
+Data$enfranchisement_final <- relevel(Data$enfranchisement_final, ref = "None")
+Failing <- glm(CURRENT_FAILING ~ enfranchisement_final + LN_POP + Source, data = Data, family= binomial)
+summary(Failing)
+
+Plot1 <- plot_model(Failing, type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "Failing system status"), title = " ") + theme_sjplot(base_size = 10); Plot1
+
+Risk <- lm(Total_risk ~ enfranchisement_final + LN_POP + Source, Data)
+summary(Risk)
+
+Plot2 <- plot_model(Risk, type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "Predicted total risk score"), title = " ") + theme_sjplot(base_size = 10); Plot2
+
+Data$Application.complete. <- relevel(Data$Application.complete., ref = "No")
+COVID <- glm(Application.complete. ~ enfranchisement_final + LN_POP + Source, data = Data, family= binomial)
+summary(COVID)
+
+Plot3 <- plot_model(COVID, type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "Applied for covid arrearage relief"), title = " ") + theme_sjplot(base_size = 10); Plot3
+
+#Risk sub components
+Waterquality <- lm(WEIGHTED_WATER_QUALITY_SCORE ~ enfranchisement_final + LN_POP + Source, Data)
+summary(Waterquality)
+
+Plot4 <- plot_model(Waterquality, type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "Pred water quality risk score"), title = " ") + theme_sjplot(base_size = 10); Plot4
+
+TMF <- lm(WEIGHTED_TMF_CAPACITY_SCORE ~ enfranchisement_final + LN_POP + Source + Purchased, Data)
+summary(TMF)
+
+Plot5 <- plot_model(TMF, type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "Predicted TMF risk score"), title = " ") + theme_sjplot(base_size = 10); Plot5
+
+Affordability <- lm(WEIGHTED_AFFORDABILITY_SCORE ~ enfranchisement_final + LN_POP + Source + Purchased, Data)
+summary(Affordability)
+
+Plot6 <- plot_model(Affordability, type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "Predicted affordability risk score"), title = " ") + theme_sjplot(base_size = 10); Plot6
+
+write_csv(Data, file = "Data_processed/Octanalysis.csv")
+```
+
+#QUESTIONS TO ANSER: 1) Use weighted or unweighted risk assessment score? 2) try affordability risk assessment score
