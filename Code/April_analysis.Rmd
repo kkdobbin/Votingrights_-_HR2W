@@ -1,0 +1,294 @@
+---
+title: "April 2024 draft final results"
+author: "Kristin Dobbin"
+date: "2024-4-12"
+knit: (function(rmdfile, ...) { rmarkdown::render(rmdfile, output_dir=here::here("Docs"))})
+output: pdf_document
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+#markdown settings
+knitr::opts_knit$set(root.dir = "/Users/KristinDobbin/Box Sync/Projects/R_Projects/Votingrights_-_HR2W", warning=FALSE, message=FALSE, include=FALSE)
+
+#load libraries
+library(tidyverse)
+library(vtable)
+library(sjPlot)
+```
+
+```{r data, include=FALSE, echo=FALSE}
+
+###Load data
+Data <- read.csv(here::here("Data_processed/Compiled_data_April2024.csv"))
+Data <- Data[,-1]
+CWSgov <- read.csv(here::here("Data_raw/ACTIVE VERSION_ CWS institution types Sept 28 2023.csv"), header=T, na.strings=c("","NA")) #just for comparison of full body of systems in state
+CWSgov$Primacy_FINAL <- as.factor(CWSgov$Primacy_FINAL)
+Data$enfranchisement_final <- as.factor(Data$enfranchisement_final)
+Data$Final_inst_update <- as.factor(Data$Final_inst_update)
+#correct types
+Data[,c(1:11,16,19:58)] <- lapply(Data[,c(1:11,16,19:58)], factor)
+levels(Data$WQ_combined_count) <- c(levels(Data$WQ_combined_count), "4")
+```
+
+## Background, research questions and hypotheses
+
+California has `r nrow(CWSgov)` Community Water Systems (CWS) (including CWS on Tribal lands regulated directly by EPA Region 9). These systems operate under a wide diversity of governance arrangements as detailed by Dobbin & Fencl (2021). Governance type, in turn, corresponds with a variety of important institutional considerations including how decisions are made, the structure (and even existence) of the governing board, and how the governing board is selected and by who.
+
+Recent years have seen a growth of scholarship related to the fundamental importance of good water governance, but, in part due to a lack of data, little research has considered these questions at the water system scale. Nonetheless, high-profile cases like the poisoning of thousands in Flint Michigan highlight the ongoing importance of transparent, representative, and accountable local leadership for water justice.
+
+To begin addressing this gap, this paper aims to describe and quantify diversity in arrangements for representing customers in the decision-making of Community Water Systems (hereafter "enfranchisement") and explore any potential associations with system performance (see discussion of performance measure below). Specifically, we ask: 1) How are drinking water customers represented in decision-making in non-ancillary Community Water Systems in California?; and 2) Is customer enfranchisement associated with system performance? 
+
+Regarding the second question, we expect that greater customer enfranchisement will be associated improved performance and that this association will be strongest for performance measures that relate to affordability and access to public funding. 
+
+## Data Summary
+
+Our initial sample is `r nrow(Data)` of the total `r nrow(CWSgov)` Community Water Systems (CWS) in California. This sample excludes the `r sum(CWSgov$Primacy_FINAL == "EPA Region 9")` CWS on Tribal lands regulated directly by EPA region 9 as well as ancillary water systems serving state, federal or county facilities (e.g. prisons, county owned housing), schools and privately owned ancillary facilities (retreat centers, churches, packing houses, farmworker housing etc.). We exclude the former due to their unique governance and regulatory nature. We exclude the later due to the fact that such ancillary systems are not governed by boards (these rationale's need improvement, technically MHPs aren't governed by boards either generally). 
+
+### Focal Independent variable: enfranchisment
+
+We use an independent variable called "enfranchisement" to test our hypotheses. This variable is factor variable with three levels: None, limited and full. None indicates that customers within the water system do not elect decision-makers for the system. This category is comprised entirely of privately owned water systems, both Mobile Home Parks and Investor Owned Utilities. The limited category indicates that only a subset of land-owning residents within the service area are able to vote to elect decision-makers. This category includes both private and public systems including Mutual Benefit systems (MWCs, Homeowners associations), some California Water Districts and some Irrigation Districts. Finally the category full indicates that all registered voters in the system/district are able to vote to elect decision makers (thus non-citizen are still excluded, this category includes county board of supervisors run systems (county subsidiary districts) where residents only directly elect one member of the board but other members are still elected). Notably, in `r  Data %>% filter(enfranchisement_final == "Unknown") %>% tally()` cases, we were unable to classify systems into one of these three categories based on available information. In another `r Data %>% filter(enfranchisement_final == "Appointed by member agencies") %>% tally()` cases, mostly JPAs, board members are appointed by member agencies rather than by residents but these members themselves are often generally elected. We exclude these cases from our analyses. Thus the final sample size and distribution is as follows: 
+
+```{r remove unknowns and appointed by member agencies and table, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+Data <- Data %>% filter(enfranchisement_final != "Appointed by member agencies") %>% filter(enfranchisement_final != "Unknown") # remove cases where enfranchisement is unknown and cases where board members are appointed by member agencies. Could change this later
+Data$enfranchisement_final <- droplevels(Data$enfranchisement_final)
+
+Enfranchisement <- Data %>% dplyr::select(enfranchisement_final)
+st(Enfranchisement, out = "kable", title = "Summary of enfranchisement independent variable")
+
+```
+  
+    
+### Outcome variables
+
+System performance can be measured in a variety of ways and there is reason to believe that certain elements of performance may be more influenced by accountability and representation that others. Previously were were relying on the SWRCB risk assessment and particularly the four risk assessment category scores to assess performance. However, we have realized these scores, which are made up of sub-indicators with different weights, reduces the interpret ability of the analysis. To dive into performance in a more nuanced way, therefore, with this analysis we shift towards using specific risk assessment sub-indicators (and occasionally other data) as indicators and discussing them as falling into the four categories of water quality, accessibility, affordability and TMF. We also analyze enfranchisement in relationship to the list of currently failing water systems maintained by the State Water Resources Control Board as designated in the 2023 needs assessment as well as CalEnviroscreen scores and the SWRCB's household socioeconomic vulnerability indicator score. These outcome measures are summarized below. Within each category of indicators we also create two composite variables, one (combined_count) which represent how many out of the four indicators the system is considered at risk for (factor ranging from 0-4) and the other (combined_any) represents if a system is considered at risk for one or more of the four indicators. 
+
+
+```{r tabular overview of DVs, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+Data$FAILING <- ifelse(Data$FINAL_SAFER_STATUS == "Failing", "Failing", "Not failing")
+Data$FAILING <- as.factor(Data$FAILING)
+Failing <- as.data.frame(summary(Data$FAILING))
+Failing$Percent <- (Failing$`summary(Data$FAILING)`)/(sum(Failing$`summary(Data$FAILING)`))*100
+Failing$Percent <- round(x = Failing$Percent, digits = 2)
+knitr::kable(Failing, col.names = c("N", "Percent"), label = "Presence on failing list")
+
+library(vtable)
+Indicators_WQ <- Data %>% dplyr::select(HISTORY_OF_E_COLI_PRESENCE_RISK_LEVEL, TREATMENT_TECHNIUQE_VIOLATIONS_RISK_LEVEL, PERCENTAGE_OF_SOURCES_EXCEEDING_AN_MCL_RISK_LEVEL, CONSTITUENTS_OF_EMERGING_CONCERN_RISK_LEVEL_BI, WQ_combined_count, WQ_combined_any)
+st(Indicators_WQ, out = "kable", title = "Summary statistics for water quality indicators")
+
+Indicators_Accessibility <- Data %>% dplyr::select(NUMBER_OF_WATER_SOURCES_RISK_LEVEL_BI, ABESENCE_OF_INTERTIES_RISK_LEVEL, BOTTLED_WATER_OR_HAULED_WATER_RELIANCE_RISK_LEVEL, SOURCE_CAPACITY_VIOLATION_RISK_LEVEL, Accessibility_combined_count, Accessibility_combined_any)
+st(Indicators_Accessibility, out = "kable", title = "Summary statistics for accessibility indicators")
+
+Indicators_Affordability <- Data %>% dplyr::select(PERCENT_OF_MEDIAN_HOUSEHOLD_INCOME_MHI_RISK_LEVEL_BI, EXTREME_WATER_BILL_RISK_LEVEL_BI, Application.complete., FUNDING_any_failingoratriskonly, Affordability_combined_count, Affordability_combined_any)
+st(Indicators_Affordability, out = "kable", title = "Summary statistics for affordability indicators")
+
+Indicators_TMF <- Data %>% dplyr::select(OPERATOR_CERTIFICATION_VIOLATIONS_RISK_LEVEL, MONITORING_AND_REPORTING_VIOLATIONS_RISK_LEVEL, DAYS_CASH_ON_HAND_RISK_LEVEL, OPERATING_RATIO_RISK_LEVEL, TMF_combined_count, TMF_combined_any)
+st(Indicators_TMF, out = "kable", title = "Summary statistics for TMF indicators")
+
+```
+
+  
+### Controls/covariates
+
+To keep things simple, I'm thinking of using three controls/covariates in the analyses: 1) population served (log transformed); 2) water source (groundwater or surface water); and 3) whether water is purchased or self-produced. 
+
+```{r add in controls, include=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+#population from safer
+#water source and whether purchased from CA SDWIS download July 5
+SDWIS <- read.csv(here::here("Data_raw/CA_SDWIS_alldownload_July52023.csv"))
+SDWIS <- dplyr::rename(SDWIS, PWSID = Water.System.No.)
+SDWIS$PWSID <- as.factor(SDWIS$PWSID)
+SDWIS$Type <- as.factor(SDWIS$Type)
+SDWIS$Primary.Source.Water.Type <- as.factor(SDWIS$Primary.Source.Water.Type)
+SDWIS <- SDWIS %>% dplyr::select(PWSID, Type, Primary.Source.Water.Type)
+SDWIS$Source <- as.factor(ifelse(SDWIS$Primary.Source.Water.Type == "GU" | SDWIS$Primary.Source.Water.Type == "GUP" | SDWIS$Primary.Source.Water.Type == "GW" | SDWIS$Primary.Source.Water.Type == "GWP", "GW", "SW"))
+SDWIS$Purchased <- as.factor(ifelse(SDWIS$Primary.Source.Water.Type == "GUP" | SDWIS$Primary.Source.Water.Type == "SWP" | SDWIS$Primary.Source.Water.Type == "GWP", "Purchased", "Self-produced"))
+
+Data <- left_join(Data, SDWIS)
+Data$LN_POP <- log((Data$POPULATION+1)) #added one to population first to avoid issue of loging 0. Need to figure out if this is the best way....
+
+Data$Source <- as.factor(Data$Source)
+Data$public <- as.factor(Data$public)
+```
+
+## Initial analysis for the relationship between enfrachisement and each outcome measure
+
+Considering whether a system is currently failing or not, as well as the WQ risk indicators, in aggregate, do not demonstrate a relationship with enfranchisement. Independently there are some significant differences but these associations vary  by indicator. Particularly, no enfranchisement and limited enfrachisement systems are more likely to have constituents of emerging concern  
+  
+```{r analyses WQ, include=TRUE, echo=FALSE}
+
+Data$FAILING <- relevel(Data$FAILING, ref = "Not failing")
+Data$enfranchisement_final <- relevel(Data$enfranchisement_final, ref = "Full")
+Failing <- glm(FAILING ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(Failing)
+
+Plot1 <- plot_model(Failing, type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "Failing system status"), title = " ") + theme_sjplot(base_size = 10); Plot1
+
+WQ1 <- glm(WQ_combined_any ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(WQ1)
+
+Plot2 <- plot_model(WQ1, type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "WQ_combined_any"), title = " ") + theme_sjplot(base_size = 10); Plot2
+
+library(MASS)
+WQ2 <- polr(WQ_combined_count ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, method = "logistic" , Hess = TRUE)
+summary(WQ2)
+tidy(WQ2, conf.int = TRUE)
+
+Plot3 <- plot_model(WQ2, type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "WQ_combined_count"), title = " ") + theme_sjplot(base_size = 10); Plot3
+
+
+#WQ sub components
+
+Data$HISTORY_OF_E_COLI_PRESENCE_RISK_LEVEL <- relevel(Data$HISTORY_OF_E_COLI_PRESENCE_RISK_LEVEL, ref = "NONE")
+ecoli <- glm(HISTORY_OF_E_COLI_PRESENCE_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(ecoli)
+
+Data$TREATMENT_TECHNIUQE_VIOLATIONS_RISK_LEVEL <- relevel(Data$TREATMENT_TECHNIUQE_VIOLATIONS_RISK_LEVEL, ref = "NONE")
+TT <- glm(TREATMENT_TECHNIUQE_VIOLATIONS_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(TT)
+
+Data$PERCENTAGE_OF_SOURCES_EXCEEDING_AN_MCL_RISK_LEVEL <- relevel(Data$PERCENTAGE_OF_SOURCES_EXCEEDING_AN_MCL_RISK_LEVEL, ref = "NONE")
+MCL <- glm(PERCENTAGE_OF_SOURCES_EXCEEDING_AN_MCL_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(MCL)
+
+Data$CONSTITUENTS_OF_EMERGING_CONCERN_RISK_LEVEL_BI <- relevel(Data$CONSTITUENTS_OF_EMERGING_CONCERN_RISK_LEVEL_BI, ref = "NONE")
+CEC <- glm(CONSTITUENTS_OF_EMERGING_CONCERN_RISK_LEVEL_BI ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(CEC)
+
+```
+
+
+With respect to accessibility, overall no enfranchisement systems are significantly more likely to be at risk for one or more accessibility indicator. At the individual indicator, no and limited enfranchisement systems are more likely to have only one source. Interesting both are more likely to have interties than their full enfranchisement counter parts and less likely to rely on hauled or bottled water. 
+
+```{r analyses Accessibility, include=TRUE, echo=FALSE}
+
+Accessibility1 <- glm(Accessibility_combined_any ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(Accessibility1)
+
+Plot4 <- plot_model(Accessibility1, type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "Accessibility_combined_any"), title = " ") + theme_sjplot(base_size = 10); Plot4
+
+Accessibility2 <- polr(Accessibility_combined_count ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, method = "logistic" , Hess = TRUE)
+summary(Accessibility2)
+tidy(Accessibility2, conf.int = TRUE)
+
+Plot5 <- plot_model(Accessibility2 , type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "Accessibility_combined_count"), title = " ") + theme_sjplot(base_size = 10); Plot5
+
+#accessibility sub components
+
+Data$NUMBER_OF_WATER_SOURCES_RISK_LEVEL_BI <- relevel(Data$NUMBER_OF_WATER_SOURCES_RISK_LEVEL_BI, ref = "NONE")
+sources <- glm(NUMBER_OF_WATER_SOURCES_RISK_LEVEL_BI ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(sources)
+
+Data$ABESENCE_OF_INTERTIES_RISK_LEVEL <- relevel(Data$ABESENCE_OF_INTERTIES_RISK_LEVEL, ref = "NONE")
+Interties <- glm(ABESENCE_OF_INTERTIES_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(Interties)
+
+Data$BOTTLED_WATER_OR_HAULED_WATER_RELIANCE_RISK_LEVEL <- relevel(Data$BOTTLED_WATER_OR_HAULED_WATER_RELIANCE_RISK_LEVEL, ref = "NONE")
+Bottled <- glm(BOTTLED_WATER_OR_HAULED_WATER_RELIANCE_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(Bottled)
+
+Data$SOURCE_CAPACITY_VIOLATION_RISK_LEVEL <- relevel(Data$SOURCE_CAPACITY_VIOLATION_RISK_LEVEL, ref = "NONE")
+sourcecapacity <- glm(SOURCE_CAPACITY_VIOLATION_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(sourcecapacity)
+```
+
+Limited enfranchisement systems are significantly more likely to be considered at risk for one or more affordability indicator. No enfranchisement systems are slightly less likely to be at risk for one or more affordability indicators than full enfranchisement systems but this difference is not significant. Looking by indicator: No enfranchisement systems are significantly less likely to be at risk for affordability considering percent of MHI and extreme water bills than full enfranchisement systems but significantly less likely to have applied for prearrange relief and significantly less likely to receive funding if their are failing or at risk. Limited enfranchisement systems are also significantly less likely to receive funding if failing or at risk and are the least likely to have applied for covid arrearage relief. They are more likely to be at risk concerning extreme water bills than full enfranchisement systems but similar to those systems with respect to rates as a percent of MHI.  
+
+```{r analyses Affordability, include=TRUE, echo=FALSE}
+
+Affordability1 <- glm(Affordability_combined_any ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(Affordability1)
+
+Plot6 <- plot_model(Affordability1, type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "Affordability_combined_any"), title = " ") + theme_sjplot(base_size = 10); Plot6
+
+Affordability2 <- polr(Affordability_combined_count ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, method = "logistic" , Hess = TRUE)
+summary(Affordability2)
+tidy(Affordability2, conf.int = TRUE)
+
+Plot7 <- plot_model(Affordability2 , type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "Affordability_combined_count"), title = " ") + theme_sjplot(base_size = 10); Plot7
+
+#Affordability sub components
+
+Data$PERCENT_OF_MEDIAN_HOUSEHOLD_INCOME_MHI_RISK_LEVEL_BI <- relevel(Data$PERCENT_OF_MEDIAN_HOUSEHOLD_INCOME_MHI_RISK_LEVEL_BI, ref = "NONE")
+MHI <- glm(PERCENT_OF_MEDIAN_HOUSEHOLD_INCOME_MHI_RISK_LEVEL_BI ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(MHI)
+
+Data$EXTREME_WATER_BILL_RISK_LEVEL_BI <- relevel(Data$EXTREME_WATER_BILL_RISK_LEVEL_BI, ref = "NONE")
+extreme <- glm(EXTREME_WATER_BILL_RISK_LEVEL_BI ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(extreme)
+
+covid <- glm(Application.complete. ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(covid)
+
+Data$FUNDING_any_failingoratriskonly <- relevel(Data$FUNDING_any_failingoratriskonly, ref = "No")
+funding <- glm(FUNDING_any_failingoratriskonly ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(funding)
+
+```
+
+No enfranchisement systems are significantly more likely to be at risk by one or more TMF indicator, contrastingly, limited enfranchisement systems are significantly less likely to be at risk for one or more TMF indicator. By indicator there are not significant differences concerns monitoring and reporting violations nor operator certification violations however for days of cash on hand no enfranchisement systems are significantly more likely to be at risk and limited enfrachisement systems are significantly less likely to be at risk, the same resutls hold for operating ratio (a measure of weather the system's annual revenues are sufficient to cover the costs of oeprating the water system, systems are considered at risk if they are not)
+
+```{r analyses TMF, include=TRUE, echo=FALSE}
+
+TMF1 <- glm(TMF_combined_any ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(TMF1)
+
+Plot8 <- plot_model(TMF1, type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "TMF_combined_any"), title = " ") + theme_sjplot(base_size = 10); Plot8
+
+TMF2 <- polr(TMF_combined_count ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, method = "logistic" , Hess = TRUE)
+summary(TMF2)
+tidy(TMF2, conf.int = TRUE)
+
+Plot9 <- plot_model(TMF2 , type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "TMF_combined_count"), title = " ") + theme_sjplot(base_size = 10); Plot9
+
+#TMF sub components
+
+Data$OPERATOR_CERTIFICATION_VIOLATIONS_RISK_LEVEL <- relevel(Data$OPERATOR_CERTIFICATION_VIOLATIONS_RISK_LEVEL, ref = "NONE")
+Opcert_violations <- glm(OPERATOR_CERTIFICATION_VIOLATIONS_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(Opcert_violations)
+
+Data$MONITORING_AND_REPORTING_VIOLATIONS_RISK_LEVEL <- relevel(Data$MONITORING_AND_REPORTING_VIOLATIONS_RISK_LEVEL, ref = "NONE")
+mrviolations <- glm(MONITORING_AND_REPORTING_VIOLATIONS_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(mrviolations)
+
+Data$DAYS_CASH_ON_HAND_RISK_LEVEL <- relevel(Data$DAYS_CASH_ON_HAND_RISK_LEVEL, ref = "NONE")
+cash <- glm(DAYS_CASH_ON_HAND_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(cash)
+
+Data$OPERATING_RATIO_RISK_LEVEL <- relevel(Data$OPERATING_RATIO_RISK_LEVEL, ref = "NONE")
+operating <- glm(OPERATING_RATIO_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(operating)
+
+```
+
+Given the established data issues with Mobile Home Parks regarding affordability, do our results change at all if we remove these systems for that analysis? For the aggregate indicator of whether a system is at risk for one or more of the affordability considerations, no enfranchisement systems are still less likely to be at risk but the difference is no longer significant. 
+
+
+```{r additional analyses affordability, include=TRUE, echo=FALSE}
+Data_noMHP <- Data %>% filter(Final_inst_update != "Mobile Home Park")
+
+Affordability_noMHP <- glm(Affordability_combined_any ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(Affordability_noMHP)
+```
+
+
+Lastly I consider which Californians are served by systems with different types of enfranchisement looking at the association between enfranchisement and calenviroscreen scores and enfranchisement and the socioeconomic burden indicators from the needs assessment (This indicator is a composite indicator of two data points: Poverty Prevalence and Housing Burden). No "enfranchisement" systems are associated with higher cal enviro scores. Limited enfrachisement systems, however, as associated with lower scores. The results for socioeconomic burden are similar. 
+
+```{r who is served, include=TRUE, echo=FALSE}
+Calenviroscore <- lm(CALENVIRO_SCREEN_SCORE ~ enfranchisement_final + LN_POP + Source + Purchased, Data)
+summary(Calenviroscore)
+
+Plot15 <- plot_model(Calenviroscore, type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "Predicted cal enviroscreen score"), title = " ") + theme_sjplot(base_size = 10); Plot15
+
+socioeconomicburden <- lm(HOUSEHOLD_SOCIOECONOMIC_BURDEN_RAW_SCORE ~ enfranchisement_final + LN_POP + Source + Purchased, Data)
+summary(socioeconomicburden)
+
+Plot16 <- plot_model(socioeconomicburden, type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "Predicted socio economic burden raw score"), title = " ") + theme_sjplot(base_size = 10); Plot16
+```
+
+
+```{r save data, include=TRUE, echo=FALSE}
+write_csv(Data, file = "Data_processed/Jananalysis.csv")
+```
+
+
+
