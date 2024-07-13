@@ -5,6 +5,7 @@ date: "2024-05-18"
 output:
   html_document: default
   pdf_document: default
+knit: (function(rmdfile, ...) { rmarkdown::render(rmdfile, output_dir=here::here("Docs"))})
 ---
 
 
