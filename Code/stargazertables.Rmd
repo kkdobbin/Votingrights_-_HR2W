@@ -4,6 +4,7 @@ author: "Kristin Dobbin"
 date: "2024-05-18"
 output:
   html_document: default
+  pdf_document: default
 ---
 
 
@@ -293,7 +294,7 @@ AFtable <- capture.output(stargazer(AFmodellist,
                                                    "coefficients(se)", "Odds ratio(95%CI)", 
                                                    "coefficients(se)", "Odds ratio(95%CI)"),
                                  model.numbers = FALSE, 
-                                 dep.var.labels = c("more than 150% MHI", "more than 150% state average", "did not apply covid", "did not receive funding"), 
+                                 dep.var.labels = c("bill ≥1.5% MHI", "bill ≥150% statewide average", "did not apply for arrearage relief", "no funding"), 
                                  ci=c(F,T, F, T, F, T, F, T), 
                                  star.cutoffs = c(0.05, 0.01, 0.001),
                                  p = c(pvaluesMHI, p.values2, pvaluesextreme, p.values2, pvaluescovid, p.values2, pvaluesfunding, p.values2),

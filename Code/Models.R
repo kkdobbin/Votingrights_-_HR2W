@@ -131,8 +131,6 @@ summary(funding)
 TMF1 <- glm(TMF_combined_any ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
 summary(TMF1)
 
-Plot8 <- plot_model(TMF1, type = "pred", terms = "enfranchisement_final", axis.title = c("Enfranchisement", "TMF_combined_any"), title = " ") + theme_sjplot(base_size = 10); Plot8
-
 #TMF2 <- polr(TMF_combined_count ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, method = "logistic" , Hess = TRUE)
 #summary(TMF2)
 #tidy(TMF2, conf.int = TRUE)
@@ -156,12 +154,26 @@ Data$OPERATING_RATIO_RISK_LEVEL <- relevel(Data$OPERATING_RATIO_RISK_LEVEL, ref 
 operating <- glm(OPERATING_RATIO_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
 summary(operating)
 
-#Who is served
+#Who is served MOVE THIS TO SES ANALYSIS
 Calenviroscore <- lm(CALENVIRO_SCREEN_SCORE ~ enfranchisement_final + LN_POP + Source + Purchased, Data)
 summary(Calenviroscore)
 
+ES<- aov(CALENVIRO_SCREEN_SCORE ~ enfranchisement_final, data = Data)
+summary(ES)
+TukeyHSD(ES)
 
 socioeconomicburden <- lm(HOUSEHOLD_SOCIOECONOMIC_BURDEN_RAW_SCORE ~ enfranchisement_final + LN_POP + Source + Purchased, Data)
 summary(socioeconomicburden)
 
+SES<- aov(HOUSEHOLD_SOCIOECONOMIC_BURDEN_RAW_SCORE ~ enfranchisement_final, data = Data) #measures the percent of households in a census tract that are both low income (making less than 80% of the Housing and Urban Development (HUD) Area Median Family Income) and severely burdened by housing. costs (paying greater than 50% of their income to housing costs). Higher is more burden. 
+summary(SES)
+TukeyHSD(SES)
+
 plot(predictorEffect("enfranchisement_final", Calenviroscore))
+
+#Use zelig to fix CI issue son predicted probabilites?
+library(zelig)
+set.seed(1990)
+x.out_ecoli <- setx(ecoli, enfranchisement_final = "None", LN_POP = 6.526, Source = "GW", Purchased = "Self-produced")
+s.out_LR_no <- sim(FinalModel, x=x.out_LR_no, num=100000)
+summary(s.out_LR_no) 

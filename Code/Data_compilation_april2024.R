@@ -124,8 +124,8 @@ Data <- left_join(Data, SDWIS)
 Data$LN_POP <- log((Data$POPULATION+1)) #added one to population first to avoid issue of loging 0. Need to figure out if this is the best way....
 
 #adjust the indicators that have three levels so there is only one (no or minimal risk versus high/medium risk)
-Data$CONSTITUENTS_OF_EMERGING_CONCERN_RISK_LEVEL_BI <- as.factor(ifelse(Data$CONSTITUENTS_OF_EMERGING_CONCERN_RISK_LEVEL == "NONE", "NONE", "HIGH"))
-Data$NUMBER_OF_WATER_SOURCES_RISK_LEVEL_BI <- as.factor(ifelse(Data$CONSTITUENTS_OF_EMERGING_CONCERN_RISK_LEVEL == "NONE", "NONE", "HIGH"))
+Data$CONSTITUENTS_OF_EMERGING_CONCERN_RISK_LEVEL_BI <- as.factor(ifelse(Data$CONSTITUENTS_OF_EMERGING_CONCERN_RISK_LEVEL == "HIGH", "HIGH", "NONE"))
+Data$NUMBER_OF_WATER_SOURCES_RISK_LEVEL_BI <- as.factor(ifelse(Data$NUMBER_OF_WATER_SOURCES_RISK_LEVEL == "NONE", "NONE", "HIGH"))
 Data$BOTTLED_WATER_OR_HAULED_WATER_RELIANCE_RISK_LEVEL <- recode(Data$BOTTLED_WATER_OR_HAULED_WATER_RELIANCE_RISK_LEVEL, "VERY HIGH" = "HIGH")
 Data$PERCENT_OF_MEDIAN_HOUSEHOLD_INCOME_MHI_RISK_LEVEL_BI <- as.factor(ifelse(Data$PERCENT_OF_MEDIAN_HOUSEHOLD_INCOME_MHI_RISK_LEVEL == "NONE", "NONE", "HIGH"))
 na_string2 <- "MISSING"
@@ -141,13 +141,18 @@ Data$FUNDING_any <- as.factor(ifelse(Data$FUNDING_RECEIVED_SINCE_2017 > 0, "Yes"
 Data$FUNDING_any_failingoratriskonly <- NA
 Data$FUNDING_any_failingoratriskonly <- as.factor(ifelse(Data$FINAL_SAFER_STATUS == "At-Risk" | Data$FINAL_SAFER_STATUS == "Failing", Data$FUNDING_any, Data$FUNDING_any_failingoratriskonly))
 library(plyr)
-Data$FUNDING_any_failingoratriskonly <- revalue(Data$FUNDING_any_failingoratriskonly, c("1" = "No", "2" = "Yes"))
+Data$FUNDING_any_failingoratriskonly <- revalue(Data$FUNDING_any_failingoratriskonly, c("2" = "Yes", "1" = "No"))
 
 #Adjust the non risk assessment affordability indicators so the mirror the others in directional
+Data$hasnotreceivedfunding <- Data$FUNDING_any_failingoratriskonly
+Data$hasnotreceivedfunding <- revalue(Data$hasnotreceivedfunding , c("Yes" = "No", "No" = "Yes"))
+Data$hasnotreceivedfunding <- relevel(Data$hasnotreceivedfunding, ref = "No")
+
 Data$didnotapplycovid <- Data$Application.complete.
 Data$didnotapplycovid <- relevel(Data$didnotapplycovid, ref = "Yes")
-Data$hasnotreceivedfunding <- Data$FUNDING_any_failingoratriskonly
-Data$hasnotreceivedfunding <- relevel(Data$hasnotreceivedfunding, ref = "Yes")
+Data$didnotapplycovid  <- revalue(Data$didnotapplycovid , c("Yes" = "No", "No" = "Yes"))
+
+
 
 #Create composite variables for each category. 
 
@@ -239,3 +244,5 @@ Data <- left_join(Data, WQ[,c(1,6,7)], by = "PWSID")
 #write csv
 
 write.csv(Data, file = here::here("Data_processed/Compiled_data_April2024.csv"))
+
+
