@@ -5,9 +5,10 @@ library(tidyverse)
 
 ###Load data and initial manipulations
 
-CWSgov <- read.csv(here::here("Data_raw/ACTIVE VERSION_ CWS institution types Sept 28 2023.csv"), header=T, na.strings=c("","NA"))
+CWSgov <- read.csv(here::here("Data_raw/ACTIVE VERSION_ CWS institution types Sept 28 2023.csv"), header=T, 
+                   na.strings=c("","NA"))
 CWSgov$Primacy_FINAL <- as.factor(CWSgov$Primacy_FINAL)
-CWSgov <- CWSgov %>% filter(Primacy_FINAL != "EPA Region 9") #for purposes of this project get rid of EPA regulated Tribal water systems
+CWSgov <- CWSgov %>% filter(Primacy_FINAL != "EPA Region 9") #get rid of EPA regulated Tribal water systems
 CWSgov <- CWSgov %>% filter(Final_inst_update != "Tribal Government") #Get rid of three remaining systems that are Tribal but state regulated for whatever reason
 CWSgov$Primacy_FINAL <- droplevels(CWSgov$Primacy_FINAL)
 CWSgov <- CWSgov[,c(1:6)] #get rid of columns I don't need
@@ -19,9 +20,34 @@ CWSgov$Inst_Subtype  <- as.factor(CWSgov$Inst_Subtype)
 ### create new variables for ancillary/non ancillary, public/private and customer enfranchisement
  
 ## create ancillary variable
-CWSgov$ancillary <- ifelse(CWSgov$Final_inst_update == "Community Services District" | CWSgov$Final_inst_update == "County Service Area" | CWSgov$Final_inst_update == "Municipal Water District" | CWSgov$Final_inst_update == "City" | CWSgov$Final_inst_update == "County Sanitation District"| CWSgov$Final_inst_update == "County Water District"| CWSgov$Final_inst_update == "County Waterworks District" | CWSgov$Final_inst_update == "Irrigation District"| CWSgov$Final_inst_update == "Maintenance District"| CWSgov$Final_inst_update == "Municipal Utility District"| CWSgov$Final_inst_update == "Public Utility District"| CWSgov$Final_inst_update == "Resort Improvement District"| CWSgov$Final_inst_update == "Resource Conservation District"| CWSgov$Final_inst_update == "Sanitary District"| CWSgov$Final_inst_update == "Water Conservation District"| CWSgov$Final_inst_update == "Special Act District" | CWSgov$Final_inst_update == "Mutual Benefit" | CWSgov$Final_inst_update == "Joint Powers Authority/Agreement" | CWSgov$Final_inst_update == "Investor Owned Utility" | CWSgov$Final_inst_update == "California Water District" | CWSgov$Final_inst_update == "Mobile Home Park","No", NA)
+CWSgov$ancillary <- ifelse(CWSgov$Final_inst_update == "Community Services District" | 
+                             CWSgov$Final_inst_update == "County Service Area" |
+                             CWSgov$Final_inst_update == "Municipal Water District" |
+                             CWSgov$Final_inst_update == "City" |
+                             CWSgov$Final_inst_update == "County Sanitation District"|
+                             CWSgov$Final_inst_update == "County Water District"|
+                             CWSgov$Final_inst_update == "County Waterworks District" |
+                             CWSgov$Final_inst_update == "Irrigation District"|
+                             CWSgov$Final_inst_update == "Maintenance District"|
+                             CWSgov$Final_inst_update == "Municipal Utility District"|
+                             CWSgov$Final_inst_update == "Public Utility District"|
+                             CWSgov$Final_inst_update == "Resort Improvement District"|
+                             CWSgov$Final_inst_update == "Resource Conservation District"|
+                             CWSgov$Final_inst_update == "Sanitary District"|
+                             CWSgov$Final_inst_update == "Water Conservation District"|
+                             CWSgov$Final_inst_update == "Special Act District" |
+                             CWSgov$Final_inst_update == "Mutual Benefit" |
+                             CWSgov$Final_inst_update == "Joint Powers Authority/Agreement" |
+                             CWSgov$Final_inst_update == "Investor Owned Utility" |
+                             CWSgov$Final_inst_update == "California Water District" |
+                             CWSgov$Final_inst_update == "Mobile Home Park","No", NA)
 
-CWSgov$ancillary <- ifelse(CWSgov$Final_inst_update == "County" | CWSgov$Final_inst_update == "Federal" | CWSgov$Final_inst_update == "Private - Ancillary" | CWSgov$Final_inst_update == "School District" | CWSgov$Final_inst_update == "State", "Yes", CWSgov$ancillary)
+CWSgov$ancillary <- ifelse(CWSgov$Final_inst_update == "County" | 
+                             CWSgov$Final_inst_update == "Federal" | 
+                             CWSgov$Final_inst_update == "Private - Ancillary" |
+                             CWSgov$Final_inst_update == "School District" |
+                             CWSgov$Final_inst_update == "State", "Yes", CWSgov$ancillary)
+
 CWSgov$ancillary <- as.factor(CWSgov$ancillary)
 #NOTES: Mobile Home Parks can be considered ancillary but we aren't using them as such here because water provision is so central to their primary aspect and because they are so common (probably need to refine this rational for paper). This variable leaves to institution type as NA: Private unknown which is okay since they will drop out of our analysis anyways with all the ancillary systems. 
 
@@ -73,7 +99,7 @@ Arrearage$Application.complete. <- as.factor(Arrearage$Application.complete.)
 Arrearage <- distinct(Arrearage, .keep_all = )
 
 ## SAFER
-SAFER2023 <- read.csv(here::here("Data_raw/Drinking_Water_Risk_Assessment.csv"))#SAFER data comes from https://data.ca.gov/dataset/safer-failing-and-at-risk-drinking-water-systems. Dictionary saved in data folder. Is from 2023 report. 
+SAFER2023 <- read.csv(here::here("Data_raw/Drinking_Water_Risk_Assessment.csv"))#SAFER data comes from https://data.ca.gov/dataset/safer-failing-and-at-risk-drinking-water-systems. Dictionary saved in data_raw folder as well. Is from 2023 report. 
 SAFER2023 <- dplyr::rename(SAFER2023, PWSID = WATER_SYSTEM_NUMBER)
 SAFER2023 <- SAFER2023 %>% dplyr::select(PWSID, SERVICE_CONNECTIONS, POPULATION, MHI,
                                          CALENVIRO_SCREEN_SCORE, FINAL_SAFER_STATUS, HOUSEHOLD_SOCIOECONOMIC_BURDEN_RAW_SCORE,

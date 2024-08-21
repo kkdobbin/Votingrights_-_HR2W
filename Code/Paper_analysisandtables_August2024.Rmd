@@ -1,0 +1,384 @@
+---
+title: "Paper_analysisandtables_August2024"
+author: "Kristin Dobbin"
+date: "2024-08-19"
+output:
+  html_document: default
+  pdf_document: default
+knit: (function(rmdfile, ...) { rmarkdown::render(rmdfile, output_dir=here::here("Docs"))})
+---
+
+
+```{r setup, include=FALSE, echo=FALSE}
+#MARKDOWN SETTINGS
+knitr::opts_knit$set(root.dir = "/Users/KristinDobbin/Box Sync/Projects/R_Projects/Votingrights_-_HR2W", warning=FALSE, message=FALSE, include=FALSE)
+
+#LOAD LIBRARIES
+library(tidyverse)
+library(vtable)
+library(sjPlot)
+
+#LOAD AND READY DATA
+Data <- read.csv(here::here("Data_processed/Compiled_data_July2024.csv"))
+Data <- Data[,-1]
+CWSgov <- read.csv(here::here("Data_raw/ACTIVE VERSION_ CWS institution types Sept 28 2023.csv"), header=T, na.strings=c("","NA")) #just for comparison of full body of systems in state
+CWSgov$Primacy_FINAL <- as.factor(CWSgov$Primacy_FINAL)
+Data$enfranchisement_final <- as.factor(Data$enfranchisement_final)
+Data$Final_inst_update <- as.factor(Data$Final_inst_update)
+
+Data <- Data %>% filter(enfranchisement_final != "Appointed by member agencies") %>% filter(enfranchisement_final != "Unknown") # remove cases where enfranchisement is unknown and cases where board members are appointed by member agencies.
+Data$enfranchisement_final <- droplevels(Data$enfranchisement_final)
+
+#correct data types, levels and reference factors
+Data[,c(1:13,18,21:45, 47:62)] <- lapply(Data[,c(1:13,18,21:45, 47:62)], factor)
+levels(Data$WQ_combined_count) <- c(levels(Data$WQ_combined_count), "4")
+
+Data$FAILING <- ifelse(Data$FINAL_SAFER_STATUS == "Failing", "Failing", "Not failing")
+Data$FAILING <- as.factor(Data$FAILING)
+
+Data$Source <- as.factor(Data$Source)
+Data$public <- as.factor(Data$public)
+
+#re-order factor levels for enfranchisement to be full, limited, none
+Data$enfranchisement_final <- factor(Data$enfranchisement_final, levels = c("Full", "Limited", "None"))
+
+Data$FAILING <- relevel(Data$FAILING, ref = "Not failing")
+Data$enfranchisement_final <- relevel(Data$enfranchisement_final, ref = "Full")
+
+#Make self produced water the reference (compared to purchased)
+Data$Purchased <- relevel(Data$Purchased, ref = "Self-produced")
+
+Data$HISTORY_OF_E_COLI_PRESENCE_RISK_LEVEL <- relevel(Data$HISTORY_OF_E_COLI_PRESENCE_RISK_LEVEL, ref = "NONE")
+Data$TREATMENT_TECHNIUQE_VIOLATIONS_RISK_LEVEL <- relevel(Data$TREATMENT_TECHNIUQE_VIOLATIONS_RISK_LEVEL, ref = "NONE")
+Data$PERCENTAGE_OF_SOURCES_EXCEEDING_AN_MCL_RISK_LEVEL <- relevel(Data$PERCENTAGE_OF_SOURCES_EXCEEDING_AN_MCL_RISK_LEVEL, ref = "NONE")
+Data$CONSTITUENTS_OF_EMERGING_CONCERN_RISK_LEVEL_BI <- relevel(Data$CONSTITUENTS_OF_EMERGING_CONCERN_RISK_LEVEL_BI, ref = "NONE")
+Data$NUMBER_OF_WATER_SOURCES_RISK_LEVEL_BI <- relevel(Data$NUMBER_OF_WATER_SOURCES_RISK_LEVEL_BI, ref = "NONE")
+Data$ABESENCE_OF_INTERTIES_RISK_LEVEL <- relevel(Data$ABESENCE_OF_INTERTIES_RISK_LEVEL, ref = "NONE")
+Data$BOTTLED_WATER_OR_HAULED_WATER_RELIANCE_RISK_LEVEL <- relevel(Data$BOTTLED_WATER_OR_HAULED_WATER_RELIANCE_RISK_LEVEL, ref = "NONE")
+Data$SOURCE_CAPACITY_VIOLATION_RISK_LEVEL <- relevel(Data$SOURCE_CAPACITY_VIOLATION_RISK_LEVEL, ref = "NONE")
+Data$PERCENT_OF_MEDIAN_HOUSEHOLD_INCOME_MHI_RISK_LEVEL_BI <- relevel(Data$PERCENT_OF_MEDIAN_HOUSEHOLD_INCOME_MHI_RISK_LEVEL_BI, ref = "NONE")
+Data$EXTREME_WATER_BILL_RISK_LEVEL_BI <- relevel(Data$EXTREME_WATER_BILL_RISK_LEVEL_BI, ref = "NONE")
+Data$FUNDING_any_failingoratriskonly <- relevel(Data$FUNDING_any_failingoratriskonly, ref = "No")
+Data$OPERATOR_CERTIFICATION_VIOLATIONS_RISK_LEVEL <- relevel(Data$OPERATOR_CERTIFICATION_VIOLATIONS_RISK_LEVEL, ref = "NONE")
+Data$MONITORING_AND_REPORTING_VIOLATIONS_RISK_LEVEL <- relevel(Data$MONITORING_AND_REPORTING_VIOLATIONS_RISK_LEVEL, ref = "NONE")
+Data$DAYS_CASH_ON_HAND_RISK_LEVEL <- relevel(Data$DAYS_CASH_ON_HAND_RISK_LEVEL, ref = "NONE")
+Data$OPERATING_RATIO_RISK_LEVEL <- relevel(Data$OPERATING_RATIO_RISK_LEVEL, ref = "NONE")
+
+#MODELS
+
+#Failing
+Failing <- glm(FAILING ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(Failing)
+
+#Water quality
+WQ1 <- glm(WQ_combined_any ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(WQ1)
+
+##WQ sub components
+ecoli <- glm(HISTORY_OF_E_COLI_PRESENCE_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(ecoli)
+exp(coef(ecoli))
+
+TT <- glm(TREATMENT_TECHNIUQE_VIOLATIONS_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(TT)
+
+MCL <- glm(PERCENTAGE_OF_SOURCES_EXCEEDING_AN_MCL_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(MCL)
+
+CEC <- glm(CONSTITUENTS_OF_EMERGING_CONCERN_RISK_LEVEL_BI ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(CEC)
+
+#Accessibility
+Accessibility1 <- glm(Accessibility_combined_any ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(Accessibility1)
+
+##Accessibility sub components
+sources <- glm(NUMBER_OF_WATER_SOURCES_RISK_LEVEL_BI ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(sources)
+
+Interties <- glm(ABESENCE_OF_INTERTIES_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(Interties)
+
+Bottled <- glm(BOTTLED_WATER_OR_HAULED_WATER_RELIANCE_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(Bottled)
+
+sourcecapacity <- glm(SOURCE_CAPACITY_VIOLATION_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(sourcecapacity)
+
+#Affordability 
+Affordability1 <- glm(Affordability_combined_any ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(Affordability1)
+
+## Affordability sub components
+MHI <- glm(PERCENT_OF_MEDIAN_HOUSEHOLD_INCOME_MHI_RISK_LEVEL_BI ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(MHI)
+
+extreme <- glm(EXTREME_WATER_BILL_RISK_LEVEL_BI ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(extreme)
+
+covid <- glm(didnotapplycovid ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(covid)
+
+funding <- glm(hasnotreceivedfunding ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(funding)
+
+# TMF
+TMF1 <- glm(TMF_combined_any ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(TMF1)
+
+## TMF sub components
+Opcert_violations <- glm(OPERATOR_CERTIFICATION_VIOLATIONS_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(Opcert_violations)
+
+mrviolations <- glm(MONITORING_AND_REPORTING_VIOLATIONS_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(mrviolations)
+
+cash <- glm(DAYS_CASH_ON_HAND_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(cash)
+
+operating <- glm(OPERATING_RATIO_RISK_LEVEL ~ enfranchisement_final + LN_POP + Source + Purchased, data = Data, family= binomial)
+summary(operating)
+```
+
+
+
+```{r table composites, results='asis'}
+library(stargazer)
+
+#Composites
+WQ1OR <- WQ1
+WQ1OR$coefficients <- exp(WQ1OR$coefficients)
+p.valuesWQ1 <- list(summary(WQ1)$coefficients[,4])
+
+Affordability1OR <- Affordability1
+Affordability1OR$coefficients <- exp(Affordability1OR$coefficients)
+pvaluesAffordability1 <- list(summary(Affordability1)$coefficients[,4])
+
+Accessibility1OR <- Accessibility1
+Accessibility1OR$coefficients <- exp(Accessibility1OR$coefficients)
+pvaluesAccesibility1 <- list(summary(Accessibility1)$coefficients[,4])
+
+TMF1OR <- TMF1
+TMF1OR$coefficients <- exp(TMF1OR$coefficients)
+pvaluesTMF1 <- list(summary(TMF1)$coefficients[,4])
+
+p.values2 <- list(c(1,1,1,1,1,1))
+
+compositemodellist <- list(WQ1, WQ1OR, Affordability1, Affordability1OR,
+                           Accessibility1, Accessibility1OR, TMF1, TMF1OR)
+
+Compositestable <- capture.output(stargazer(compositemodellist,
+                                 type = 'html', 
+                                 column.labels = c("coefficients(se)", "Odds ratio(95%CI)", 
+                                                   "coefficients(se)", "Odds ratio(95%CI)", 
+                                                   "coefficients(se)", "Odds ratio(95%CI)", 
+                                                   "coefficients(se)", "Odds ratio(95%CI)"),
+                                 model.numbers = FALSE, 
+                                 dep.var.labels = c("Water quality", "Affordability", 
+                                                    "Accessibility", "TMF"), 
+                                 ci=c(F,T, F, T, F, T, F, T), 
+                                 star.cutoffs = c(0.05, 0.01, 0.001),
+                                 p = c(p.valuesWQ1, p.values2, pvaluesAffordability1, p.values2,
+                                       pvaluesAccesibility1, p.values2, pvaluesTMF1, p.values2),
+                                 omit.stat = c("ll", "aic"),
+                                 covariate.labels = c("Lim enfran.", "No enfran.",
+                                                      "Population (log)", "Surface water",
+                                                      "Purchased"),
+                                 omit = "Constant",
+                                apply.ci = function(x) { 0 }))
+
+cat(paste(gsub("\\(0.000, 0.000\\)", "", Compositestable), collapse = "\n"), "\n")
+```
+
+  
+<br>
+<br>
+  
+
+```{r table WQ, results='asis'}
+#WQ indicators
+ecoliOR <- ecoli
+ecoliOR$coefficients <- exp(ecoliOR$coefficients)
+pvaluesecoli <- list(summary(ecoli)$coefficients[,4])
+
+TTOR <- TT
+TTOR$coefficients <- exp(TTOR$coefficients)
+pvaluesTT <- list(summary(TT)$coefficients[,4])
+
+MCLOR <- MCL
+MCLOR$coefficients <- exp(MCLOR$coefficients)
+pvaluesMCL <- list(summary(MCL)$coefficients[,4])
+
+CECOR <- CEC
+CECOR$coefficients <- exp(CECOR$coefficients)
+pvaluesCEC <- list(summary(CEC)$coefficients[,4])
+
+WQmodellist <- list(ecoli, ecoliOR, TT, TTOR, MCL, MCLOR, CEC, CECOR)
+
+WQtable <- capture.output(stargazer(WQmodellist,
+                                 type = 'html', 
+                                 column.labels = c("coefficients(se)", "Odds ratio(95%CI)", 
+                                                   "coefficients(se)", "Odds ratio(95%CI)", 
+                                                   "coefficients(se)", "Odds ratio(95%CI)", 
+                                                   "coefficients(se)", "Odds ratio(95%CI)"),
+                                 model.numbers = FALSE, 
+                                 dep.var.labels = c("ecoli", "treatment technique violations", "MCL violations", "cont. of emerging concern"), 
+                                 ci=c(F,T, F, T, F, T, F, T), 
+                                 star.cutoffs = c(0.05, 0.01, 0.001),
+                                 p = c(pvaluesecoli, p.values2, pvaluesTT, p.values2,
+                                       pvaluesMCL, p.values2, pvaluesCEC, p.values2),
+                                 omit.stat = c("ll", "aic"),
+                                 covariate.labels = c("Lim enfran.", "No enfran.",
+                                                      "Population (log)", "Surface water",
+                                                      "Purchased"),
+                                 omit = "Constant",
+                                 apply.ci = function(x) { 0 }))
+
+cat(paste(gsub("\\(0.000, 0.000\\)", "", WQtable), collapse = "\n"), "\n")
+
+```
+
+
+  
+<br>
+<br>
+  
+
+```{r table affordability, results='asis'}
+#affordability indicators
+MHIOR <- MHI
+MHIOR$coefficients <- exp(MHIOR$coefficients)
+pvaluesMHI <- list(summary(MHI)$coefficients[,4])
+
+extremeOR <- extreme
+extremeOR$coefficients <- exp(extremeOR$coefficients)
+pvaluesextreme <- list(summary(extreme)$coefficients[,4])
+
+covidOR <- covid
+covidOR$coefficients <- exp(covidOR$coefficients)
+pvaluescovid <- list(summary(covid)$coefficients[,4])
+
+fundingOR <- funding
+fundingOR$coefficients <- exp(fundingOR$coefficients)
+pvaluesfunding <- list(summary(funding)$coefficients[,4])
+
+AFmodellist <- list(MHI, MHIOR, extreme, extremeOR, covid, covidOR, funding, fundingOR)
+
+AFtable <- capture.output(stargazer(AFmodellist,
+                                 type = 'html', 
+                                 column.labels = c("coefficients(se)", "Odds ratio(95%CI)", 
+                                                   "coefficients(se)", "Odds ratio(95%CI)", 
+                                                   "coefficients(se)", "Odds ratio(95%CI)", 
+                                                   "coefficients(se)", "Odds ratio(95%CI)"),
+                                 model.numbers = FALSE, 
+                                 dep.var.labels = c("bill ≥1.5% MHI", "bill ≥150% statewide average", "did not apply for arrearage relief", "no funding"), 
+                                 ci=c(F,T, F, T, F, T, F, T), 
+                                 star.cutoffs = c(0.05, 0.01, 0.001),
+                                 p = c(pvaluesMHI, p.values2, pvaluesextreme, p.values2, pvaluescovid, p.values2, pvaluesfunding, p.values2),
+                                 omit.stat = c("ll", "aic"),
+                                 covariate.labels = c("Lim enfran.", "No enfran.",
+                                                      "Population (log)", "Surface water",
+                                                      "Purchased"),
+                                 omit = "Constant",
+                                 apply.ci = function(x) { 0 }))
+
+cat(paste(gsub("\\(0.000, 0.000\\)", "", AFtable), collapse = "\n"), "\n")
+
+```
+
+<br>
+<br>
+  
+
+```{r table accessibility, results='asis'}
+#accessibility indicators
+sourcesOR <- sources
+sourcesOR$coefficients <- exp(sourcesOR$coefficients)
+pvaluessources <- list(summary(sources)$coefficients[,4])
+
+IntertiesOR <- Interties
+IntertiesOR$coefficients <- exp(IntertiesOR$coefficients)
+pvaluesInterties <- list(summary(Interties)$coefficients[,4])
+
+BottledOR <- Bottled
+BottledOR$coefficients <- exp(BottledOR$coefficients)
+pvaluesBottled <- list(summary(Bottled)$coefficients[,4])
+
+sourcecapacityOR <- sourcecapacity
+sourcecapacityOR$coefficients <- exp(sourcecapacityOR$coefficients)
+pvaluessourcecapacity <- list(summary(sourcecapacity)$coefficients[,4])
+
+ACmodellist <- list(sources, sourcesOR, Interties, IntertiesOR, Bottled, BottledOR, sourcecapacity, sourcecapacityOR)
+
+ACtable <- capture.output(stargazer(ACmodellist,
+                                 type = 'html', 
+                                 column.labels = c("coefficients(se)", "Odds ratio(95%CI)", 
+                                                   "coefficients(se)", "Odds ratio(95%CI)", 
+                                                   "coefficients(se)", "Odds ratio(95%CI)", 
+                                                   "coefficients(se)", "Odds ratio(95%CI)"),
+                                 model.numbers = FALSE, 
+                                 dep.var.labels = c("single source", "Absence of interties", "Bottled water reliance", "source capacity violations"), 
+                                 ci=c(F,T, F, T, F, T, F, T), 
+                                 star.cutoffs = c(0.05, 0.01, 0.001),
+                                 p = c(pvaluessources, p.values2, pvaluesInterties, p.values2, pvaluesBottled, p.values2, pvaluessourcecapacity, p.values2),
+                                 omit.stat = c("ll", "aic"),
+                                 covariate.labels = c("Lim enfran.", "No enfran.",
+                                                      "Population (log)", "Surface water",
+                                                      "Purchased"),
+                                 omit = "Constant",
+                                 apply.ci = function(x) { 0 }))
+
+cat(paste(gsub("\\(0.000, 0.000\\)", "", ACtable), collapse = "\n"), "\n")
+
+```
+
+
+<br>
+<br>
+  
+
+```{r table TMF, results='asis'}
+#TMF indicators
+Opcert_violationsOR <- Opcert_violations
+Opcert_violationsOR$coefficients <- exp(Opcert_violationsOR$coefficients)
+pvaluesOpcert <- list(summary(Opcert_violations)$coefficients[,4])
+
+mrviolationsOR <- mrviolations
+mrviolationsOR$coefficients <- exp(mrviolationsOR$coefficients)
+pvaluesmrviolations <- list(summary(mrviolations)$coefficients[,4])
+
+cashOR <- cash
+cashOR$coefficients <- exp(cashOR$coefficients)
+pvaluescash <- list(summary(cash)$coefficients[,4])
+
+operatingOR <- operating
+operatingOR$coefficients <- exp(operatingOR$coefficients)
+pvaluesoperating <- list(summary(operating)$coefficients[,4])
+
+TMFmodellist <- list(Opcert_violations, Opcert_violationsOR, mrviolations, mrviolationsOR, cash, cashOR, operating, operatingOR)
+
+TMFtable <- capture.output(stargazer(TMFmodellist,
+                                 type = 'html', 
+                                 column.labels = c("coefficients(se)", "Odds ratio(95%CI)", 
+                                                   "coefficients(se)", "Odds ratio(95%CI)", 
+                                                   "coefficients(se)", "Odds ratio(95%CI)", 
+                                                   "coefficients(se)", "Odds ratio(95%CI)"),
+                                 model.numbers = FALSE, 
+                                 dep.var.labels = c("operator cert violations", "M&R violations", "Cash on hand", "Operating ratio"), 
+                                 ci=c(F,T, F, T, F, T, F, T), 
+                                 star.cutoffs = c(0.05, 0.01, 0.001),
+                                 p = c(pvaluesOpcert, p.values2, pvaluesmrviolations, p.values2, pvaluescash, p.values2, pvaluesoperating, p.values2),
+                                 omit.stat = c("ll", "aic"),
+                                 covariate.labels = c("Lim enfran.", "No enfran.",
+                                                      "Population (log)", "Surface water",
+                                                      "Purchased"),
+                                 omit = "Constant",
+                                 apply.ci = function(x) { 0 }))
+
+cat(paste(gsub("\\(0.000, 0.000\\)", "", TMFtable), collapse = "\n"), "\n")
+
+```
+
+<br>
+<br>
+  
